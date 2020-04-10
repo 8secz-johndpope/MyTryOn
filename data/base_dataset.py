@@ -74,8 +74,8 @@ class BaseDataset(data.Dataset):
         BP2 = self.obtain_bone(P2_name,P2masks)
         P2 = self.trans(P2_img)
 
-        keys = random.shuffle(self.keys)
-        for key in keys:
+        random.shuffle(self.keys)
+        for key in self.keys:
             if BP1[key].sum()!=0 and BP2[key].sum()!=0:
                 BP1 = BP1[key]
                 BP2 = BP2[key]
