@@ -61,17 +61,18 @@ class PoseFlowNet(BaseModel):
         self.setup(opt)
 
 
-    def set_input(self, input):
+    def set_input(self,input):
         # move to GPU and change data types
-        self.input = input
-        input_P1, input_BP1, input_P1_mask = input['P1']*input['P1mask'], input['BP1'] ,input['P1mask']
-        input_P2, input_BP2, input_P2_mask = input['P2']*input['P2mask'], input['BP2'] ,input['P2mask']
-
+        P1 = input['P1']*input['P1masks'][:,None]
+        P2 = input['P2']*input['P2masks'][:,None]
+        BP1 = input['BP1']
+        BP2 = input['BP2']
+        
         if len(self.gpu_ids) > 0:
-            self.input_P1 = input_P1.cuda(self.gpu_ids[0], async=True)
-            self.input_BP1 = input_BP1.cuda(self.gpu_ids[0], async=True)
-            self.input_P2 = input_P2.cuda(self.gpu_ids[0], async=True)
-            self.input_BP2 = input_BP2.cuda(self.gpu_ids[0], async=True)  
+            self.input_P1 = P1.cuda(self.gpu_ids[0], async=True)
+            self.input_BP1 = BP1.cuda(self.gpu_ids[0], async=True)
+            self.input_P2 = P2.cuda(self.gpu_ids[0], async=True)
+            self.input_BP2 = P2.cuda(self.gpu_ids[0], async=True)  
 
         self.image_paths=[]
         for i in range(self.input_P1.size(0)):

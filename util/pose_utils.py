@@ -56,7 +56,7 @@ def cords_to_map(cords, img_size, mask,old_size=None, affine_matrix=None, sigma=
     for i, point in enumerate(cords):
         if point[0] == MISSING_VALUE or point[1] == MISSING_VALUE:
             continue
-        if mask[int(point[1]),int(point[0])] == 0:
+        if mask[int(point[0]),int(point[1])] == 0:
             continue
         point[0] = point[0]/old_size[0] * img_size[0]
         point[1] = point[1]/old_size[1] * img_size[1]

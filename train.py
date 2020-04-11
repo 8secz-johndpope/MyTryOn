@@ -32,12 +32,9 @@ if __name__ == '__main__':
         for i, data in enumerate(dataset):
             iter_start_time = time.time()
             total_iteration += 1
-
-            print(i)
             keep_training = False
-            break
-        #     model.set_input(data)
-        #     model.optimize_parameters()
+            model.set_input(data)
+            model.optimize_parameters()
 
         #     # display images on visdom and save images
         #     if total_iteration % opt.display_freq == 0:
@@ -61,20 +58,20 @@ if __name__ == '__main__':
         #             if opt.display_id > 0:
         #                 visualizer.plot_current_score(total_iteration, eval_results)
                     
-        #     # save the latest model every <save_latest_freq> iterations to the disk
-        #     if total_iteration % opt.save_latest_freq == 0:
-        #         print('saving the latest model (epoch %d, total_steps %d)' % (epoch, total_iteration))
-        #         model.save_networks('latest')
+            # save the latest model every <save_latest_freq> iterations to the disk
+            if total_iteration % opt.save_latest_freq == 0:
+                print('saving the latest model (epoch %d, total_steps %d)' % (epoch, total_iteration))
+                model.save_networks('latest')
 
-        #     # save the model every <save_iter_freq> iterations to the disk
-        #     if total_iteration % opt.save_iters_freq == 0:
-        #         print('saving the model of iterations %d' % total_iteration)
-        #         model.save_networks(total_iteration)
+            # save the model every <save_iter_freq> iterations to the disk
+            if total_iteration % opt.save_iters_freq == 0:
+                print('saving the model of iterations %d' % total_iteration)
+                model.save_networks(total_iteration)
 
-        #     if total_iteration > max_iteration:
-        #         keep_training = False
-        #         break
+            if total_iteration > max_iteration:
+                keep_training = False
+                break
 
-        # model.update_learning_rate()
+        model.update_learning_rate()
 
-        # print('\nEnd training')
+        print('\nEnd training')

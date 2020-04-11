@@ -75,15 +75,15 @@ class BaseDataset(data.Dataset):
         P2 = self.trans(P2_img)
 
         random.shuffle(self.keys)
-        for key in self.keys:
-            if BP1[key].sum()!=0 and BP2[key].sum()!=0:
-                BP1 = BP1[key]
-                BP2 = BP2[key]
-                P1masks = P1masks[key]
-                P2masks = P2masks[key]
-            break
+        # for key in self.keys:
+        #     if BP1[key].sum()!=0 and BP2[key].sum()!=0:
+        #         BP1 = BP1[key]
+        #         BP2 = BP2[key]
+        #         P1masks = P1masks[key]
+        #         P2masks = P2masks[key]
+        #     break
 
-        return {'P1': P1, 'BP1': BP1,'P1masks':P1masks,'P2': P2, 'BP2': BP2,'P2masks':P2masks,
+        return {'P1': P1, 'BP1': BP1[self.keys[0]],'P1masks':P1masks[self.keys[0]],'P2': P2, 'BP2': BP2[self.keys[0]],'P2masks':P2masks[self.keys[0]],
                 'P1_path': P1_name, 'P2_path': P2_name}
 
     def obtain_bone(self, name, masks):
