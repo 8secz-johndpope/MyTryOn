@@ -72,7 +72,7 @@ class PoseFlowNet(BaseModel):
             self.input_P1 = P1.cuda(self.gpu_ids[0], async=True)
             self.input_BP1 = BP1.cuda(self.gpu_ids[0], async=True)
             self.input_P2 = P2.cuda(self.gpu_ids[0], async=True)
-            self.input_BP2 = P2.cuda(self.gpu_ids[0], async=True)  
+            self.input_BP2 = BP2.cuda(self.gpu_ids[0], async=True)  
 
         self.image_paths=[]
         for i in range(self.input_P1.size(0)):
