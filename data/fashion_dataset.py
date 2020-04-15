@@ -15,7 +15,7 @@ class FashionDataset(BaseDataset):
             parser.set_defaults(load_size=256)
         else:
             parser.set_defaults(load_size=256)
-        parser.set_defaults(old_size=(256, 176))
+        parser.set_defaults(old_size=(256, 256))
         parser.set_defaults(structure_nc=18)
         parser.set_defaults(image_nc=3)
         parser.set_defaults(display_winsize=256)
@@ -37,7 +37,8 @@ class FashionDataset(BaseDataset):
 
     def init_categories(self, pairLst):
         pairs_file_train = pd.read_csv(pairLst)
-        size = len(pairs_file_train)
+        # size = len(pairs_file_train)
+        size = 32000
         pairs = []
         print('Loading data pairs ...')
         for i in range(size):
@@ -50,5 +51,3 @@ class FashionDataset(BaseDataset):
 
     def name(self):
         return "FashionDataset"
-
-                

@@ -4,7 +4,8 @@ import data as Dataset
 from model import create_model
 import util.util as util
 # from util.visualizer import Visualizer
-
+full_time = 9*3600
+max_epoch_time = 0
 
 if __name__ == '__main__':
     # get training options
@@ -22,6 +23,7 @@ if __name__ == '__main__':
     keep_training = True
     max_iteration = opt.niter+opt.niter_decay
     epoch = 0
+    model.load_networks(epoch)
     total_iteration = opt.iter_count
 
     # training process
@@ -63,11 +65,12 @@ if __name__ == '__main__':
         #                 visualizer.plot_current_score(total_iteration, eval_results)
                     
 
-
-            if total_iteration > max_iteration:
-                keep_training = False
-                break
-
+        epoch_time = time.time() - iter_start_time
+        full_time -= epoch_time
+        if epoch_time > max_epoch_time:
+            max_epoch_time = epoch_time
+        if full_time < max_epoch_time:
+            keep_training = False
         model.save_networks(epoch)
         model.update_learning_rate()
     print('\nEnd training')

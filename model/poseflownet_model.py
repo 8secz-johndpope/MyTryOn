@@ -33,6 +33,7 @@ class PoseFlowNet(BaseModel):
 
     def __init__(self, opt):
         BaseModel.__init__(self, opt)
+        self.keys = ['head','body','leg']
         self.loss_names = ['correctness', 'regularization']
         self.visual_names = ['input_P1','input_P2', 'warp', 'flow_fields',
                             'masks','input_BP1', 'input_BP2']
@@ -63,16 +64,29 @@ class PoseFlowNet(BaseModel):
 
     def set_input(self,input):
         # move to GPU and change data types
-        P1 = input['P1']*input['P1masks'][:,None]
-        P2 = input['P2']*input['P2masks'][:,None]
-        BP1 = input['BP1']
-        BP2 = input['BP2']
+        random.shuffle(self.keys)
+        P1_list = []
+        BP1_list = []
+        BP2_list = []
+        P2_mask_list = []
+        for key in self.keys:
+            P1_list.append(input['P1']*input['P1masks'][key][:,None])
+            BP1_list.append(input['BP1'][key])
+            BP2_list.append(input['BP2'][key])
+            P2_mask_list.append(input['P2masks'][key][:,None])
+        P1 = torch.cat(P1_list)
+        P2 = input['P2']*(1-input['P2backgrand'])
+        BP1 = torch.cat(BP1_list)
+        BP2 = torch.cat(BP2_list)
+        P2mask = torch.cat(P2_mask_list)
         
         if len(self.gpu_ids) > 0:
             self.input_P1 = P1.cuda(self.gpu_ids[0], async=True)
+            self.input_fullP1 = input['P1'].cuda(self.gpu_ids[0],async=True)
             self.input_BP1 = BP1.cuda(self.gpu_ids[0], async=True)
             self.input_P2 = P2.cuda(self.gpu_ids[0], async=True)
-            self.input_BP2 = BP2.cuda(self.gpu_ids[0], async=True)  
+            self.input_BP2 = BP2.cuda(self.gpu_ids[0], async=True)
+            self.input_P2mask = P2mask.cuda(self.gpu_ids[0],async=True)
 
         self.image_paths=[]
         for i in range(self.input_P1.size(0)):
@@ -88,6 +102,7 @@ class PoseFlowNet(BaseModel):
         [b,_,h,w] = flow_field.size()
 
         source_copy = torch.nn.functional.interpolate(self.input_P1, (h,w))
+        mask = torch.nn.functional.interpolate(self.input_P2mask.float(),(h,w))
 
         x = torch.arange(w).view(1, -1).expand(h, -1).float()
         y = torch.arange(h).view(-1, 1).expand(-1, w).float()
@@ -101,12 +116,14 @@ class PoseFlowNet(BaseModel):
 
         grid = (grid+flow).permute(0, 2, 3, 1)
         warp = torch.nn.functional.grid_sample(source_copy, grid)
+        warp *= mask
+        warp = torch.sum(warp.view(3,8,3,h,w),0)
         return  warp
 
 
     def backward_G(self):
         """Calculate training loss for the generator"""
-        loss_correctness = self.Correctness(self.input_P2, self.input_P1, self.flow_fields, self.opt.attn_layer)
+        loss_correctness = self.Correctness(self.input_P2, self.input_fullP1,self.input_P2mask,self.flow_fields, self.opt.attn_layer)
         self.loss_correctness = loss_correctness * self.opt.lambda_correct
 
         loss_regularization = self.Regularization(self.flow_fields)
