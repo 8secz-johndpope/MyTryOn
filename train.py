@@ -42,7 +42,7 @@ if __name__ == '__main__':
             if total_iteration % opt.display_freq == 0:
                 vis = model.get_current_visuals()
                 for img_key in vis.keys():
-                    util.save_image(vis[img_key],'{}/{}.jpg'.format('result/vis',img_key))
+                    util.save_image(vis[img_key],'{}/{}.jpg'.format('result/vis',img_key+str(total_iteration)))
                 if hasattr(model, 'distribution'):
                     visualizer.plot_current_distribution(model.get_current_dis()) 
 

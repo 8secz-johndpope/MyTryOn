@@ -225,8 +225,9 @@ class PerceptualCorrectness(nn.Module):
 
     """
 
-    def __init__(self, layer=['rel1_1','relu2_1','relu3_1','relu4_1']):
+    def __init__(self,opt, layer=['rel1_1','relu2_1','relu3_1','relu4_1']):
         super(PerceptualCorrectness, self).__init__()
+        self.opt = opt
         self.add_module('vgg', VGG19())
         self.layer = layer  
         self.eps=1e-8 
@@ -253,8 +254,8 @@ class PerceptualCorrectness(nn.Module):
         # maps = F.interpolate(maps, [h,w]).view(b,-1)
         flow = F.interpolate(flow, [h,w])
         target_mask = F.interpolate(target_mask.float(),[h,w])
-        flow = flow.view(3,8,flow.size(1),h,w)
-        target_mask = target_mask.view(3,8,target_mask.size(1),h,w)
+        flow = flow.view(3,self.opt.batchSize,flow.size(1),h,w)
+        target_mask = target_mask.view(3,self.opt.batchSize,target_mask.size(1),h,w)
 
         target_all = target_vgg.view(b, c, -1)                      #[b C N2]
         source_all = source_vgg.view(b, c, -1).transpose(1,2)       #[b N2 C]

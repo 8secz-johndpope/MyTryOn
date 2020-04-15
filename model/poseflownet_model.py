@@ -33,6 +33,7 @@ class PoseFlowNet(BaseModel):
 
     def __init__(self, opt):
         BaseModel.__init__(self, opt)
+        self.opt = opt
         self.keys = ['head','body','leg']
         self.loss_names = ['correctness', 'regularization']
         self.visual_names = ['input_P1','input_P2', 'warp', 'flow_fields',
@@ -75,7 +76,7 @@ class PoseFlowNet(BaseModel):
             BP2_list.append(input['BP2'][key])
             P2_mask_list.append(input['P2masks'][key][:,None])
         P1 = torch.cat(P1_list)
-        P2 = input['P2']*(1-input['P2backgrand'])
+        P2 = input['P2']*(1-input['P2backgrand'])[:,None].float()
         BP1 = torch.cat(BP1_list)
         BP2 = torch.cat(BP2_list)
         P2mask = torch.cat(P2_mask_list)
@@ -89,7 +90,7 @@ class PoseFlowNet(BaseModel):
             self.input_P2mask = P2mask.cuda(self.gpu_ids[0],async=True)
 
         self.image_paths=[]
-        for i in range(self.input_P1.size(0)):
+        for i in range(self.opt.batchSize):
             self.image_paths.append(os.path.splitext(input['P1_path'][i])[0] + '_2_' + input['P2_path'][i])
 
 
@@ -117,7 +118,7 @@ class PoseFlowNet(BaseModel):
         grid = (grid+flow).permute(0, 2, 3, 1)
         warp = torch.nn.functional.grid_sample(source_copy, grid)
         warp *= mask
-        warp = torch.sum(warp.view(3,8,3,h,w),0)
+        warp = torch.sum(warp.view(3,self.opt.batchSize,3,h,w),0)
         return  warp
 
 
