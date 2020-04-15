@@ -6,7 +6,6 @@ import numpy as np
 import random
 import torchvision.transforms.functional as F
 from util import pose_utils
-from PIL import Image
 import pandas as pd
 import torch
 import math
