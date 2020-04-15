@@ -53,7 +53,7 @@ class PoseFlowNet(BaseModel):
 
         if self.isTrain:
             # define the loss functions
-            self.Correctness = external_function.PerceptualCorrectness().to(opt.device)
+            self.Correctness = external_function.PerceptualCorrectness(opt).to(opt.device)
             self.Regularization = external_function.MultiAffineRegularizationLoss(kz_dic=opt.kernel_size).to(opt.device)
             # define the optimizer
             self.optimizer_G = torch.optim.Adam(itertools.chain(filter(lambda p: p.requires_grad, self.net_G.parameters())),
