@@ -49,7 +49,7 @@ def map_to_cord(pose_map, threshold=0.1):
     return np.concatenate([np.expand_dims(y_values, -1), np.expand_dims(x_values, -1)], axis=1)
 
 
-def cords_to_map(cords, img_size, mask,old_size=None, affine_matrix=None, sigma=6):
+def cords_to_map_numpy(cords, img_size, mask,old_size=None, affine_matrix=None, sigma=6):
     old_size = img_size if old_size is None else old_size
     cords = cords.astype(float)
     result = np.zeros(img_size + cords.shape[0:1], dtype='float32')
@@ -70,6 +70,40 @@ def cords_to_map(cords, img_size, mask,old_size=None, affine_matrix=None, sigma=
         xx, yy = np.meshgrid(np.arange(img_size[1]), np.arange(img_size[0]))
         result[..., i] = np.exp(-((yy - point_0) ** 2 + (xx - point_1) ** 2) / (2 * sigma ** 2))
     return result
+
+
+def cords_to_map(cords, mask, IDS, KEYS, device, opt, affine_matrix=None, sigma=6):
+    cords = cords.astype(float)
+    result = torch.zeros((3*opt.batchSize,18,256,256), device=device)
+    for n,k in enumerate(KEYS):
+        for j,cord in enumerate(cords):
+            for i, point in enumerate(cords):
+                if point[0] == MISSING_VALUE or point[1] == MISSING_VALUE:
+                    continue
+                if mask[j,int(point[0]),int(point[1])] not in IDS[k]:
+                    continue
+                if affine_matrix is not None:
+                    point_ =torch.dot(affine_matrix, torch.matrix([point[1], point[0], 1]).reshape(3,1))
+                    point_0 = int(point_[1])
+                    point_1 = int(point_[0])
+                else:
+                    point_0 = int(point[0])
+                    point_1 = int(point[1])
+                xx, yy = torch.meshgrid(torch.arange(256.,device=device), np.arange(256.,device=device))
+                result[n*opt.batchSize+j,i,...] = torch.exp(-((xx - point_0) ** 2 + (yy - point_1) ** 2) / (2 * sigma ** 2))
+    return result
+
+def obtain_mask(full_mask,IDS,KEYS):
+    res_mask = []
+    for key in KEYS:
+        tmpmask = []
+        for i in IDS[key]:
+            tmpmask.append(torch.where(full_mask==i,torch.ones_like(full_mask),torch.zeros_like(full_mask)))
+        tmpmask = torch.stack(tmpmask)
+        res_mask.append(torch.sum(tmpmask,axis=0))
+    res_mask = torch.cat(res_mask)
+    backgrand_mask = torch.where(full_mask==0,torch.ones_like(full_mask),torch.zeros_like(full_mask))
+    return res_mask,backgrand_mask
 
 
 def draw_pose_from_cords(pose_joints, img_size, radius=2, draw_joints=True):

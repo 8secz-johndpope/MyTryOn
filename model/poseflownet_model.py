@@ -2,7 +2,7 @@ import torch
 from model.base_model import BaseModel
 from model.networks import base_function, external_function
 import model.networks as network
-from util import task, util
+from util import task, util,pose_utils
 import itertools
 import data as Dataset
 import numpy as np
@@ -35,6 +35,9 @@ class PoseFlowNet(BaseModel):
         BaseModel.__init__(self, opt)
         self.opt = opt
         self.keys = ['head','body','leg']
+        self.mask_id = {'head':[1,2,4,13],'body':[3,5,6,7,10,11,14,15],'leg':[8,9,12,16,17,18,19]}
+        self.GPU = torch.device('cuda:0')
+
         self.loss_names = ['correctness', 'regularization']
         self.visual_names = ['input_P1','input_P2', 'warp', 'flow_fields',
                             'masks','input_BP1', 'input_BP2']
@@ -66,28 +69,20 @@ class PoseFlowNet(BaseModel):
     def set_input(self,input):
         # move to GPU and change data types
         random.shuffle(self.keys)
-        P1_list = []
-        BP1_list = []
-        BP2_list = []
-        P2_mask_list = []
-        for key in self.keys:
-            P1_list.append(input['P1']*input['P1masks'][key][:,None])
-            BP1_list.append(input['BP1'][key])
-            BP2_list.append(input['BP2'][key])
-            P2_mask_list.append(input['P2masks'][key][:,None])
-        P1 = torch.cat(P1_list)
-        P2 = input['P2']*(1-input['P2backgrand'])[:,None].float()
-        BP1 = torch.cat(BP1_list)
-        BP2 = torch.cat(BP2_list)
-        P2mask = torch.cat(P2_mask_list)
         
         if len(self.gpu_ids) > 0:
-            self.input_P1 = P1.cuda(self.gpu_ids[0], async=True)
-            self.input_fullP1 = input['P1'].cuda(self.gpu_ids[0],async=True)
-            self.input_BP1 = BP1.cuda(self.gpu_ids[0], async=True)
-            self.input_P2 = P2.cuda(self.gpu_ids[0], async=True)
-            self.input_BP2 = BP2.cuda(self.gpu_ids[0], async=True)
-            self.input_P2mask = P2mask.cuda(self.gpu_ids[0],async=True)
+            self.input_fullP1 = input['P1'].cuda(self.gpu_ids[0], async=True)
+            self.input_P2 = input['P2'].cuda(self.gpu_ids[0], async=True)
+            input_P1mask = input['P1masks'].cuda(self.gpu_ids[0],async=True)
+            input_P2mask = input['P2masks'].cuda(self.gpu_ids[0],async=True)
+
+        input_P1mask,_ = pose_utils.obtain_mask(input_P1mask,self.mask_id,self.keys)
+        self.input_P2mask,input_P2back = pose_utils.obtain_mask(input_P2mask,self.mask_id,self.keys)
+        self.input_P1 = self.input_fullP1.repeat(3,1,1,1)*input_P1mask
+        self.input_P2 = self.input_P2*(1-input_P2back)[:,None]
+        self.input_BP1 = pose_utils.cords_to_map(input['BP1'],input['P1masks'],self.mask_id,self.keys,self.GPU,self.opt)
+        self.input_BP2 = pose_utils.cords_to_map(input['BP2'],input['P2masks'],self.mask_id,self.keys,self.GPU,self.opt)
+ 
 
         self.image_paths=[]
         for i in range(self.opt.batchSize):

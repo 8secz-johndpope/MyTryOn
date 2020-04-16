@@ -14,8 +14,7 @@ import numbers
 class BaseDataset(data.Dataset):
     def __init__(self):
         super(BaseDataset, self).__init__()
-        self.mask_id = {'head':[1,2,4,13],'body':[3,5,6,7,10,11,14,15],'leg':[8,9,12,16,17,18,19]}
-        # self.keys = ['head','body','leg']
+
 
     @staticmethod
     def modify_commandline_options(parser, is_train):
@@ -30,7 +29,7 @@ class BaseDataset(data.Dataset):
         size = len(self.name_pairs)
         self.dataset_size = size
 
-        if isinstance(opt.load_size, int):
+        if isinstance(opt.load_size, float):
             self.load_size = (opt.load_size, opt.load_size)
         else:
             self.load_size = opt.load_size
@@ -65,47 +64,32 @@ class BaseDataset(data.Dataset):
         P1_mask = np.array(Image.open(P1mask_path))
         P2_mask = np.array(Image.open(P2mask_path))
         
-        P1masks,_ = self.obtain_mask(torch.from_numpy(P1_mask))
-        BP1 = self.obtain_bone(P1_name,P1masks)
+        P1masks = torch.from_numpy(P1_mask)
+        BP1 = self.obtain_bone(P1_name)
         P1 = self.trans(P1_img)
 
-        P2masks,P2backgrand = self.obtain_mask(torch.from_numpy(P2_mask))
-        BP2 = self.obtain_bone(P2_name,P2masks)
+        P2masks = torch.from_numpy(P2_mask)
+        BP2 = self.obtain_bone(P2_name)
         P2 = self.trans(P2_img)
 
-        # random.shuffle(self.keys)
-        # for key in self.keys:
-        #     if BP1[key].sum()!=0 and BP2[key].sum()!=0:
-        #         BP1 = BP1[key]
-        #         BP2 = BP2[key]
-        #         P1masks = P1masks[key]
-        #         P2masks = P2masks[key]
-        #     break
-
-        return {'P1': P1, 'BP1': BP1,'P1masks':P1masks,'P2': P2, 'BP2': BP2,'P2masks':P2masks,'P2backgrand':P2backgrand,
+        return {'P1': P1, 'BP1': BP1,'P1masks':P1masks,'P2': P2, 'BP2': BP2,'P2masks':P2masks,
                 'P1_path': P1_name, 'P2_path': P2_name}
 
-    def obtain_bone(self, name, masks):
+    def obtain_bone(self, name):
         string = self.annotation_file.loc[name]
         array = pose_utils.load_pose_cords_from_strings(string['keypoints_y'], string['keypoints_x'])
-        pose_dict = {}
-        for msk_key in masks.keys():
-            pose  = pose_utils.cords_to_map(array, self.load_size ,masks[msk_key])
-            pose = np.transpose(pose,(2, 0, 1))
-            pose = torch.Tensor(pose)
-            pose_dict[msk_key] = pose
-        return pose_dict
+        return array
 
-    def obtain_mask(self,full_mask):
-        res_mask = {}
-        for key in self.mask_id.keys():
-            res_mask[key] = []
-            for i in self.mask_id[key]:
-                res_mask[key].append(torch.where(full_mask==i,torch.ones_like(full_mask),torch.zeros_like(full_mask)))
-            res_mask[key] = torch.stack(res_mask[key])
-            res_mask[key] = torch.sum(res_mask[key],axis=0)
-        backgrand_mask = torch.where(full_mask==0,torch.ones_like(full_mask),torch.zeros_like(full_mask))
-        return res_mask,backgrand_mask
+    # def obtain_mask(self,full_mask):
+    #     res_mask = {}
+    #     for key in self.mask_id.keys():
+    #         res_mask[key] = []
+    #         for i in self.mask_id[key]:
+    #             res_mask[key].append(torch.where(full_mask==i,torch.ones_like(full_mask),torch.zeros_like(full_mask)))
+    #         res_mask[key] = torch.stack(res_mask[key])
+    #         res_mask[key] = torch.sum(res_mask[key],axis=0)
+    #     backgrand_mask = torch.where(full_mask==0,torch.ones_like(full_mask),torch.zeros_like(full_mask))
+    #     return res_mask,backgrand_mask
 
    
 

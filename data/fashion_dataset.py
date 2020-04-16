@@ -12,10 +12,10 @@ class FashionDataset(BaseDataset):
     def modify_commandline_options(parser, is_train):
         parser = BaseDataset.modify_commandline_options(parser, is_train)
         if is_train:
-            parser.set_defaults(load_size=256)
+            parser.set_defaults(load_size=256.)
         else:
-            parser.set_defaults(load_size=256)
-        parser.set_defaults(old_size=(256, 256))
+            parser.set_defaults(load_size=256.)
+        parser.set_defaults(old_size=(256., 256.))
         parser.set_defaults(structure_nc=18)
         parser.set_defaults(image_nc=3)
         parser.set_defaults(display_winsize=256)
