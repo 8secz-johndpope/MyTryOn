@@ -94,20 +94,42 @@ class Pose(BaseModel):
         self.setup(opt)
 
 
-    def set_input(self, input):
-        # move to GPU and change data types
-        self.input = input
-        input_P1, input_BP1 = input['P1'], input['BP1']
-        input_P2, input_BP2 = input['P2'], input['BP2']
+    # def set_input(self, input):
+    #     # move to GPU and change data types
+    #     self.input = input
+    #     input_P1, input_BP1 = input['P1'], input['BP1']
+    #     input_P2, input_BP2 = input['P2'], input['BP2']
 
+    #     if len(self.gpu_ids) > 0:
+    #         self.input_P1 = input_P1.cuda(self.gpu_ids[0], async=True)
+    #         self.input_BP1 = input_BP1.cuda(self.gpu_ids[0], async=True)
+    #         self.input_P2 = input_P2.cuda(self.gpu_ids[0], async=True)
+    #         self.input_BP2 = input_BP2.cuda(self.gpu_ids[0], async=True)        
+
+    #     self.image_paths=[]
+    #     for i in range(self.input_P1.size(0)):
+    #         self.image_paths.append(os.path.splitext(input['P1_path'][i])[0] + '_2_' + input['P2_path'][i])
+
+    def set_input(self,input):
+        # move to GPU and change data types
+        random.shuffle(self.keys)
+        
         if len(self.gpu_ids) > 0:
-            self.input_P1 = input_P1.cuda(self.gpu_ids[0], async=True)
-            self.input_BP1 = input_BP1.cuda(self.gpu_ids[0], async=True)
-            self.input_P2 = input_P2.cuda(self.gpu_ids[0], async=True)
-            self.input_BP2 = input_BP2.cuda(self.gpu_ids[0], async=True)        
+            self.input_fullP1 = input['P1'].cuda(self.gpu_ids[0], async=True)
+            self.input_P2 = input['P2'].cuda(self.gpu_ids[0], async=True)
+            input_P1mask = input['P1masks'].cuda(self.gpu_ids[0],async=True)
+            input_P2mask = input['P2masks'].cuda(self.gpu_ids[0],async=True)
+
+        input_P1mask,_ = pose_utils.obtain_mask(input_P1mask,self.mask_id,self.keys)
+        self.input_P2mask,input_P2back = pose_utils.obtain_mask(input_P2mask,self.mask_id,self.keys)
+        self.input_P1 = self.input_fullP1.repeat(3,1,1,1)*input_P1mask
+        self.input_P2 = self.input_P2*(1-input_P2back)
+        self.input_BP1 = pose_utils.cords_to_map(input['BP1'],input['P1masks'],self.mask_id,self.keys,self.GPU,self.opt)
+        self.input_BP2 = pose_utils.cords_to_map(input['BP2'],input['P2masks'],self.mask_id,self.keys,self.GPU,self.opt)
+ 
 
         self.image_paths=[]
-        for i in range(self.input_P1.size(0)):
+        for i in range(self.opt.batchSize):
             self.image_paths.append(os.path.splitext(input['P1_path'][i])[0] + '_2_' + input['P2_path'][i])
 
 

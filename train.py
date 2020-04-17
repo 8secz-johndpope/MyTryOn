@@ -65,7 +65,7 @@ if __name__ == '__main__':
         #                 visualizer.plot_current_score(total_iteration, eval_results)
                     
 
-        epoch_time = time.time() - iter_start_time
+        epoch_time = time.time() - epoch_start_time
         full_time -= epoch_time
         if epoch_time > max_epoch_time:
             max_epoch_time = epoch_time
