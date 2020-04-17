@@ -10,6 +10,7 @@ import matplotlib.patches as mpatches
 from collections import defaultdict
 import skimage.measure, skimage.transform
 import sys
+import torch
 
 LIMB_SEQ = [[1,2], [1,5], [2,3], [3,4], [5,6], [6,7], [1,8], [8,9],
            [9,10], [1,11], [11,12], [12,13], [1,0], [0,14], [14,16],
@@ -77,7 +78,7 @@ def cords_to_map(cords, mask, IDS, KEYS, device, opt, affine_matrix=None, sigma=
     result = torch.zeros((3*opt.batchSize,18,256,256), device=device)
     for n,k in enumerate(KEYS):
         for j,cord in enumerate(cords):
-            for i, point in enumerate(cords):
+            for i, point in enumerate(cord):
                 if point[0] == MISSING_VALUE or point[1] == MISSING_VALUE:
                     continue
                 if mask[j,int(point[0]),int(point[1])] not in IDS[k]:
@@ -89,7 +90,7 @@ def cords_to_map(cords, mask, IDS, KEYS, device, opt, affine_matrix=None, sigma=
                 else:
                     point_0 = int(point[0])
                     point_1 = int(point[1])
-                xx, yy = torch.meshgrid(torch.arange(256.,device=device), np.arange(256.,device=device))
+                xx, yy = torch.meshgrid(torch.arange(256.,device=device), torch.arange(256.,device=device))
                 result[n*opt.batchSize+j,i,...] = torch.exp(-((xx - point_0) ** 2 + (yy - point_1) ** 2) / (2 * sigma ** 2))
     return result
 
@@ -103,7 +104,7 @@ def obtain_mask(full_mask,IDS,KEYS):
         res_mask.append(torch.sum(tmpmask,axis=0))
     res_mask = torch.cat(res_mask)
     backgrand_mask = torch.where(full_mask==0,torch.ones_like(full_mask),torch.zeros_like(full_mask))
-    return res_mask,backgrand_mask
+    return res_mask[:,None],backgrand_mask[:,None]
 
 
 def draw_pose_from_cords(pose_joints, img_size, radius=2, draw_joints=True):
