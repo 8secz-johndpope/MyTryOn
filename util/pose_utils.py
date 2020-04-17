@@ -74,7 +74,7 @@ def cords_to_map_numpy(cords, img_size, mask,old_size=None, affine_matrix=None, 
 
 
 def cords_to_map(cords, mask, IDS, KEYS, device, opt, affine_matrix=None, sigma=6):
-    cords = cords.astype(float)
+    cords = cords.float()
     result = torch.zeros((3*opt.batchSize,18,256,256), device=device)
     for n,k in enumerate(KEYS):
         for j,cord in enumerate(cords):
