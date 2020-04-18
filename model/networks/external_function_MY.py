@@ -225,33 +225,37 @@ class PerceptualCorrectness(nn.Module):
 
     """
 
-    def __init__(self, layer=['rel1_1','relu2_1','relu3_1','relu4_1']):
+    def __init__(self,opt, layer=['rel1_1','relu2_1','relu3_1','relu4_1']):
         super(PerceptualCorrectness, self).__init__()
+        self.opt = opt
         self.add_module('vgg', VGG19())
         self.layer = layer  
         self.eps=1e-8 
         self.resample = Resample2d(4, 1, sigma=2)
 
-    def __call__(self, target, source, flow_list, used_layers, mask=None, use_bilinear_sampling=False):
+    def __call__(self, target, source, targetmask,flow_list, used_layers, mask=None, use_bilinear_sampling=False):
         used_layers=sorted(used_layers, reverse=True)
         # self.target=target
         # self.source=source
         self.target_vgg, self.source_vgg = self.vgg(target), self.vgg(source)
         loss = 0
         for i in range(len(flow_list)):
-            loss += self.calculate_loss(flow_list[i], self.layer[used_layers[i]], mask, use_bilinear_sampling)
+            loss += self.calculate_loss(flow_list[i], targetmask,self.layer[used_layers[i]], mask, use_bilinear_sampling)
 
 
 
         return loss
 
-    def calculate_loss(self, flow, layer, mask=None, use_bilinear_sampling=False):
+    def calculate_loss(self, flow, target_mask,layer, mask=None, use_bilinear_sampling=False):
         target_vgg = self.target_vgg[layer]
         source_vgg = self.source_vgg[layer]
         [b, c, h, w] = target_vgg.shape
 
         # maps = F.interpolate(maps, [h,w]).view(b,-1)
         flow = F.interpolate(flow, [h,w])
+        target_mask = F.interpolate(target_mask.float(),[h,w])
+        flow = flow.view(3,self.opt.batchSize,flow.size(1),h,w)
+        target_mask = target_mask.view(3,self.opt.batchSize,target_mask.size(1),h,w)
 
         target_all = target_vgg.view(b, c, -1)                      #[b C N2]
         source_all = source_vgg.view(b, c, -1).transpose(1,2)       #[b N2 C]
@@ -271,7 +275,10 @@ class PerceptualCorrectness(nn.Module):
         if use_bilinear_sampling:
             input_sample = self.bilinear_warp(source_vgg, flow).view(b, c, -1)
         else:
-            input_sample = self.resample(source_vgg, flow).view(b, c, -1)
+            input_sample = self.resample(source_vgg, flow[0])*target_mask[0]
+            input_sample += self.resample(source_vgg,flow[1])*target_mask[1]
+            input_sample += self.resample(source_vgg,flow[2])*target_mask[2]
+            input_sample = input_sample.view(b, c, -1)
 
         correction_sample = F.cosine_similarity(input_sample, target_all)    #[b 1 N2]
         loss_map = torch.exp(-correction_sample/(correction_max+self.eps))
