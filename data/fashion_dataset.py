@@ -38,10 +38,10 @@ class FashionDataset(BaseDataset):
     def init_categories(self, pairLst):
         pairs_file_train = pd.read_csv(pairLst)
         # size = len(pairs_file_train)
-        size = 32000
+        # size = 32000
         pairs = []
         print('Loading data pairs ...')
-        for i in range(size):
+        for i in range(self.opt.dataset_size):
             pair = [pairs_file_train.iloc[i]['from'], pairs_file_train.iloc[i]['to']]
             pairs.append(pair)
 

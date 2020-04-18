@@ -22,8 +22,7 @@ if __name__ == '__main__':
     # training flag
     keep_training = True
     max_iteration = opt.niter+opt.niter_decay
-    epoch = 0
-    model.load_networks(epoch)
+    epoch = opt.which_iter
     total_iteration = opt.iter_count
 
     # training process

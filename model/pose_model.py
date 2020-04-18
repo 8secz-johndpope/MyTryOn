@@ -2,7 +2,7 @@ import torch
 from model.base_model import BaseModel
 from model.networks import base_function, external_function
 import model.networks as network
-from util import task, util
+from util import task, util,pose_utils
 import itertools
 import data as Dataset
 import numpy as np
@@ -55,6 +55,10 @@ class Pose(BaseModel):
 
         self.visual_names = ['input_P1','input_P2', 'img_gen', 'flow_fields', 'masks']
         self.model_names = ['G','D']
+
+        self.keys = ['head','body','leg']
+        self.mask_id = {'head':[1,2,4,13],'body':[3,5,6,7,10,11,14,15],'leg':[8,9,12,16,17,18,19]}
+        self.GPU = torch.device('cuda:0')
 
         self.FloatTensor = torch.cuda.FloatTensor if len(self.gpu_ids)>0 \
             else torch.FloatTensor

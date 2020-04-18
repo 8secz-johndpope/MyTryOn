@@ -72,14 +72,14 @@ class PoseFlowNet(BaseModel):
         
         if len(self.gpu_ids) > 0:
             self.input_fullP1 = input['P1'].cuda(self.gpu_ids[0], async=True)
-            self.input_P2 = input['P2'].cuda(self.gpu_ids[0], async=True)
+            self.input_fullP2 = input['P2'].cuda(self.gpu_ids[0], async=True)
             input_P1mask = input['P1masks'].cuda(self.gpu_ids[0],async=True)
             input_P2mask = input['P2masks'].cuda(self.gpu_ids[0],async=True)
 
         input_P1mask,_ = pose_utils.obtain_mask(input_P1mask,self.mask_id,self.keys)
-        self.input_P2mask,input_P2back = pose_utils.obtain_mask(input_P2mask,self.mask_id,self.keys)
+        input_P2mask,input_P2back = pose_utils.obtain_mask(input_P2mask,self.mask_id,self.keys)
         self.input_P1 = self.input_fullP1.repeat(3,1,1,1)*input_P1mask
-        self.input_P2 = self.input_P2*(1-input_P2back)
+        self.input_P2 = self.input_fullP2.repeat(3,1,1,1)*input_P2mask
         self.input_BP1 = pose_utils.cords_to_map(input['BP1'],input['P1masks'],self.mask_id,self.keys,self.GPU,self.opt)
         self.input_BP2 = pose_utils.cords_to_map(input['BP2'],input['P2masks'],self.mask_id,self.keys,self.GPU,self.opt)
  
@@ -98,7 +98,6 @@ class PoseFlowNet(BaseModel):
         [b,_,h,w] = flow_field.size()
 
         source_copy = torch.nn.functional.interpolate(self.input_P1, (h,w))
-        mask = torch.nn.functional.interpolate(self.input_P2mask.float(),(h,w))
 
         x = torch.arange(w).view(1, -1).expand(h, -1).float()
         y = torch.arange(h).view(-1, 1).expand(-1, w).float()
@@ -112,14 +111,12 @@ class PoseFlowNet(BaseModel):
 
         grid = (grid+flow).permute(0, 2, 3, 1)
         warp = torch.nn.functional.grid_sample(source_copy, grid)
-        warp *= mask
-        warp = torch.sum(warp.view(3,self.opt.batchSize,3,h,w),0)
         return  warp
 
 
     def backward_G(self):
         """Calculate training loss for the generator"""
-        loss_correctness = self.Correctness(self.input_P2, self.input_fullP1,self.input_P2mask,self.flow_fields, self.opt.attn_layer)
+        loss_correctness = self.Correctness(self.input_P2, self.input_P1, self.flow_fields, self.opt.attn_layer)
         self.loss_correctness = loss_correctness * self.opt.lambda_correct
 
         loss_regularization = self.Regularization(self.flow_fields)

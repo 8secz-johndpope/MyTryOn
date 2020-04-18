@@ -17,10 +17,11 @@ class BaseOptions():
         parser.add_argument('--name', type=str, default='experiment_name', help='name of the experiment.')
         parser.add_argument('--model', type=str, default='rec', help='name of the model type.')
         parser.add_argument('--checkpoints_dir', type=str, default='checkpoint', help='models are save here')
-        parser.add_argument('--which_iter', type=str, default='latest', help='which iterations to load')
+        parser.add_argument('--which_iter', type=int, default=0, help='which iterations to load')
         parser.add_argument('--gpu_ids', type=str, default='0', help='gpu ids: e.g. 0, 1, 2 use -1 for CPU')
         parser.add_argument('--phase', type=str, default='train', help='train, val, test, etc')
         parser.add_argument('--continue_train', action='store_true', help='continue training: load the latest model')
+        parser.add_argument('--dataset_size',type=int,default=32000)
 
 
         # input/output sizes
