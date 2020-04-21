@@ -128,8 +128,9 @@ class Pose(BaseModel):
         input_P2mask,input_P2backmask = pose_utils.obtain_mask(input_P2mask,self.mask_id,self.keys)
         self.input_P1 = self.input_fullP1.repeat(3,1,1,1)*input_P1mask
         self.input_P1_back = self.input_fullP1*input_P1backmask
-        self.input_P2 = self.input_fullP2#.repeat(3,1,1,1)*input_P2mask
+        self.input_P2 = self.input_fullP2.repeat(3,1,1,1)*input_P2mask
         self.input_P2mask = input_P2mask
+        self.input_P1backmask = input_P1backmask
         self.input_P2backmask = input_P2backmask
         self.input_BP1 = pose_utils.cords_to_map(input['BP1'],input['P1masks'],self.mask_id,self.keys,self.GPU,self.opt)
         self.input_BP2 = pose_utils.cords_to_map(input['BP2'],input['P2masks'],self.mask_id,self.keys,self.GPU,self.opt)
@@ -142,7 +143,7 @@ class Pose(BaseModel):
 
     def test(self):
         """Forward function used in test time"""
-        img_gen, flow_fields, masks = self.net_G(self.input_P1, self.input_BP1, self.input_BP2, self.input_P1_back ,self.input_P2mask ,self.input_P2backmask)
+        img_gen, flow_fields, masks = self.net_G(self.input_P1, self.input_BP1, self.input_BP2, self.input_fullP1, (1.0-self.input_P1backmask), self.input_P2mask ,self.input_P2backmask)
         self.save_results(img_gen, data_name='vis')
         if self.opt.save_input:
             self.save_results(self.input_P1, data_name='ref')
@@ -152,7 +153,7 @@ class Pose(BaseModel):
 
     def forward(self):
         """Run forward processing to get the inputs"""
-        self.img_gen, self.flow_fields, self.masks = self.net_G(self.input_P1, self.input_BP1, self.input_BP2, self.input_P1_back ,self.input_P2mask ,self.input_P2backmask)
+        self.img_gen, self.flow_fields, self.masks = self.net_G(self.input_P1, self.input_BP1, self.input_BP2, self.input_fullP1, (1.0-self.input_P1backmask), self.input_P2mask ,self.input_P2backmask)
 
 
     def backward_D_basic(self, netD, real, fake):
@@ -177,12 +178,12 @@ class Pose(BaseModel):
     def backward_D(self):
         """Calculate the GAN loss for the discriminators"""
         base_function._unfreeze(self.net_D)
-        self.loss_dis_img_gen = self.backward_D_basic(self.net_D, self.input_P2, self.img_gen)
+        self.loss_dis_img_gen = self.backward_D_basic(self.net_D, self.input_fullP2, self.img_gen)
 
     def backward_G(self):
         """Calculate training loss for the generator"""
         # Calculate l1 loss 
-        loss_app_gen = self.L1loss(self.img_gen, self.input_P2)
+        loss_app_gen = self.L1loss(self.img_gen, self.input_fullP2)
         self.loss_app_gen = loss_app_gen * self.opt.lambda_rec
         
         # Calculate Sampling Correctness Loss        
@@ -199,7 +200,7 @@ class Pose(BaseModel):
         self.loss_regularization = loss_regularization * self.opt.lambda_regularization
 
         # Calculate perceptual loss
-        loss_content_gen, loss_style_gen = self.Vggloss(self.img_gen, self.input_P2) 
+        loss_content_gen, loss_style_gen = self.Vggloss(self.img_gen, self.input_fullP2) 
         self.loss_style_gen = loss_style_gen*self.opt.lambda_style
         self.loss_content_gen = loss_content_gen*self.opt.lambda_content
 

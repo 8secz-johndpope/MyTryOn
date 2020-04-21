@@ -7,7 +7,7 @@ from model.networks.base_network import BaseNetwork
 from model.networks.resample2d_package.resample2d import Resample2d
 from model.networks.base_function import *
 from torch.nn.utils.spectral_norm import spectral_norm as SpectralNorm
-from inpaintor import InpaintSANet
+from .inpaintor import InpaintSANet
 from collections import OrderedDict
 
 ######################################################################################################
@@ -18,7 +18,7 @@ class PoseGenerator(BaseNetwork):
                 norm='batch', activation='ReLU', attn_layer=[1,2], extractor_kz={'1':5,'2':5}, use_spect=True, use_coord=False):  
         super(PoseGenerator, self).__init__()
         self.backgrand = InpaintSANet(c_dim=4)
-        self._load_params(self.backgrand, self.opt.bg_model, need_module=False)
+        self._load_params(self.backgrand, '/content/checkpoint/fashion/net_epoch_50_id_G.pth', need_module=False)
         self.backgrand.eval()
 
         self.source = PoseSourceNet(image_nc, ngf, img_f, layers, 
@@ -52,9 +52,9 @@ class PoseGenerator(BaseNetwork):
         print('Loading net: %s' % load_path)
 
 
-    def forward(self, source, source_B, target_B, source_backgrand, target_mask, target_backgrand_mask):
+    def forward(self, source, source_B, target_B, source_full, source_body_mask, target_mask, target_backgrand_mask):
         feature_list = self.source(source)
-        source_backgrand = self.backgrand(source_backgrand)
+        source_backgrand = self.backgrand(source_full,masks=source_body_mask,only_x=True)
         flow_fields, masks = self.flow_net(source, source_B, target_B)
         image_gen = self.target(target_B, feature_list, flow_fields, masks)
         b,c,h,w = image_gen.size()
