@@ -18,7 +18,7 @@ class PoseGenerator(BaseNetwork):
                 norm='batch', activation='ReLU', attn_layer=[1,2], extractor_kz={'1':5,'2':5}, use_spect=True, use_coord=False):  
         super(PoseGenerator, self).__init__()
         self.backgrand = InpaintSANet(c_dim=4)
-        self._load_params(self.backgrand, '/content/checkpoint/fashion/net_epoch_50_id_G.pth', need_module=False)
+        self._load_params(self.backgrand, 'checkpoint/fashion/net_epoch_50_id_G.pth', need_module=False)
         self.backgrand.eval()
 
         self.source = PoseSourceNet(image_nc, ngf, img_f, layers, 
