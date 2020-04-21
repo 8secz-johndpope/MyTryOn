@@ -162,7 +162,7 @@ class BaseModel():
                     net.load_state_dict(torch.load(path))
                     print('load %s from %s' % (name, filename))
                 except FileNotFoundError:
-                    print('do not find checkpoint for network %s'%name)
+                    print('do not find checkpoint for network {} ,path={}'.format(name,path))
                     continue
                 except:
                     pretrained_dict = torch.load(path)

@@ -1,4 +1,5 @@
 import re
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -6,6 +7,8 @@ from model.networks.base_network import BaseNetwork
 from model.networks.resample2d_package.resample2d import Resample2d
 from model.networks.base_function import *
 from torch.nn.utils.spectral_norm import spectral_norm as SpectralNorm
+from inpaintor import InpaintSANet
+from collections import OrderedDict
 
 ######################################################################################################
 # Human Pose Image Generation 
@@ -14,6 +17,10 @@ class PoseGenerator(BaseNetwork):
     def __init__(self,  image_nc=3, structure_nc=18, output_nc=3, ngf=64, img_f=1024, layers=6, num_blocks=2, 
                 norm='batch', activation='ReLU', attn_layer=[1,2], extractor_kz={'1':5,'2':5}, use_spect=True, use_coord=False):  
         super(PoseGenerator, self).__init__()
+        self.backgrand = InpaintSANet(c_dim=4)
+        self._load_params(self.backgrand, self.opt.bg_model, need_module=False)
+        self.backgrand.eval()
+
         self.source = PoseSourceNet(image_nc, ngf, img_f, layers, 
                                                     norm, activation, use_spect, use_coord)
         self.target = PoseTargetNet(image_nc, structure_nc, output_nc, ngf, img_f, layers, num_blocks, 
@@ -22,12 +29,40 @@ class PoseGenerator(BaseNetwork):
                                     attn_layer=attn_layer, norm=norm, activation=activation,
                                     use_spect=use_spect, use_coord=use_coord)       
 
-    def forward(self, source, source_B, target_B):
+    def _load_params(self, network, load_path, need_module=False):
+        assert os.path.exists(
+            load_path), 'Weights file not found. Have you trained a model!? We are not providing one %s' % load_path
+
+        def load(model, orig_state_dict):
+            state_dict = OrderedDict()
+            for k, v in orig_state_dict.items():
+                # remove 'module'
+                name = k[7:] if 'module' in k else k
+                state_dict[name] = v
+
+            # load params
+            model.load_state_dict(state_dict)
+
+        save_data = torch.load(load_path)
+        if need_module:
+            network.load_state_dict(save_data)
+        else:
+            load(network, save_data)
+
+        print('Loading net: %s' % load_path)
+
+
+    def forward(self, source, source_B, target_B, source_backgrand, target_mask, target_backgrand_mask):
         feature_list = self.source(source)
+        source_backgrand = self.backgrand(source_backgrand)
         flow_fields, masks = self.flow_net(source, source_B, target_B)
         image_gen = self.target(target_B, feature_list, flow_fields, masks)
-
-        return image_gen, flow_fields, masks  
+        b,c,h,w = image_gen.size()
+        gen = image_gen*target_mask
+        gen = gen.view(3,-1,c,h,w)
+        gen = torch.sum(gen,0)
+        gen = source_backgrand*target_backgrand_mask+gen
+        return gen, flow_fields, masks  
 
     def forward_hook_function(self, source, source_B, target_B):
         feature_list = self.source(source)
